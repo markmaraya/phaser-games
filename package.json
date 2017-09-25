@@ -1,0 +1,19 @@
+{
+  "name": "phaser-games",
+  "version": "1.0.0",
+  "description": "phaser games",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/markmaraya/phaser-games.git"
+  },
+  "author": "Mark",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/markmaraya/phaser-games/issues"
+  },
+  "homepage": "https://github.com/markmaraya/phaser-games#readme"
+}
