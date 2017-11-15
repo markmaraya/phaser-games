@@ -5,10 +5,10 @@ var gameHeight = 47;
 var finalGameWidth = gameWidth * 16;
 var finalGameHeight = gameHeight * 16;
 var gameBackground = 0;
-var snakeLength = 42;
+var snakeLength = 2;
 var snakeColor = 6;
 var appleColor = 3;
-var gameSpeed = 5;
+var gameSpeed = 10;
 var SimpleGame = (function () {
     function SimpleGame() {
         this.game = new Phaser.Game(finalGameWidth, finalGameHeight, Phaser.CANVAS, 'content', {
@@ -20,7 +20,9 @@ var SimpleGame = (function () {
             selfCollision: this.selfCollision,
             wallCollision: this.wallCollision,
             gameOver: this.gameOver,
-            newGame: this.newGame
+            newGame: this.newGame,
+            newDirectionPicker: this.newDirectionPicker,
+            findApple: this.findApple
         });
     }
     SimpleGame.prototype.preload = function () {
@@ -55,11 +57,23 @@ var SimpleGame = (function () {
             this.snake[i] = sprite;
         }
         this.generateApple();
-        var style = { font: 'bold 14px sans-serif', fill: '#fff' };
-        this.game.add.text(30, 20, 'SCORE', style);
-        this.scoreTextValue = this.game.add.text(90, 20, this.score.toString(), style);
-        this.game.add.text(350, 20, 'SPEED', style);
-        this.speedTextValue = this.game.add.text(410, 20, this.speed.toString(), style);
+        var STYLE = { font: 'bold 14px sans-serif', fill: '#fff' };
+        var SNAKE_HEAD = this.snake[this.snake.length - 1];
+        var APPLE = this.apple;
+        this.game.add.text(30, 20, 'SCORE', STYLE);
+        this.scoreTextValue = this.game.add.text(130, 20, this.score.toString(), STYLE);
+        this.game.add.text(30, 40, 'SPEED', STYLE);
+        this.speedTextValue = this.game.add.text(130, 40, this.speed.toString(), STYLE);
+        this.game.add.text(30, 60, 'DIRECTION', STYLE);
+        this.directionTextValue = this.game.add.text(130, 60, this.direction.toUpperCase().toString(), STYLE);
+        this.game.add.text(30, 80, 'X - GREEN', STYLE);
+        this.xTextValue = this.game.add.text(130, 80, SNAKE_HEAD.x.toString(), STYLE);
+        this.game.add.text(30, 100, 'Y - GREEN', STYLE);
+        this.yTextValue = this.game.add.text(130, 100, SNAKE_HEAD.y.toString(), STYLE);
+        this.game.add.text(30, 120, 'X - RED', STYLE);
+        this.xAppleTextValue = this.game.add.text(130, 120, APPLE.x.toString(), STYLE);
+        this.game.add.text(30, 140, 'Y - RED', STYLE);
+        this.yAppleTextValue = this.game.add.text(130, 140, APPLE.y.toString(), STYLE);
     };
     SimpleGame.prototype.update = function () {
         if (this.cursors.right.isDown && this.direction != 'left') {
@@ -77,7 +91,7 @@ var SimpleGame = (function () {
         this.speed = gameSpeed;
         this.speedTextValue.text = this.speed.toString();
         this.updateDelay++;
-        if (this.updateDelay % (7 - this.speed) == 0) {
+        if (this.updateDelay % (11 - this.speed) == 0) {
             var firstCell = this.snake[this.snake.length - 1];
             var lastCell = this.snake.shift();
             var oldLastCellX = lastCell.x;
@@ -112,8 +126,14 @@ var SimpleGame = (function () {
                 this.addNew = false;
             }
             this.appleCollision();
+            this.findApple(firstCell);
             this.selfCollision(firstCell);
             this.wallCollision(firstCell);
+            this.xTextValue.text = firstCell.x.toString();
+            this.yTextValue.text = firstCell.y.toString();
+            this.xAppleTextValue.text = this.apple.x.toString();
+            this.yAppleTextValue.text = this.apple.y.toString();
+            this.directionTextValue.text = this.direction.toUpperCase().toString();
         }
     };
     SimpleGame.prototype.generateApple = function () {
@@ -139,18 +159,129 @@ var SimpleGame = (function () {
     SimpleGame.prototype.selfCollision = function (head) {
         for (var i = 0; i < this.snake.length - 1; i++) {
             if (head.x == this.snake[i].x && head.y == this.snake[i].y) {
-                this.gameOver();
             }
         }
     };
     SimpleGame.prototype.wallCollision = function (head) {
-        if (this.isAlive) {
-            if (head.x >= finalGameWidth || head.x < 0 || head.y >= finalGameHeight || head.y < 0) {
-                this.isAlive = false;
-                this.gameOver();
+        var topWall = head.y <= 0;
+        var rightWall = head.x >= finalGameWidth - this.squareSize;
+        var bottomWall = head.y >= finalGameHeight - this.squareSize;
+        var leftWall = head.x <= 0;
+        // if (this.isAlive) {
+        if (topWall || rightWall || bottomWall || leftWall) {
+            if (this.direction == 'up' && topWall) {
+                this.newDirectionPicker(head, this.direction);
+            }
+            else if (this.direction == 'right' && rightWall) {
+                this.newDirectionPicker(head, this.direction);
+            }
+            else if (this.direction == 'down' && bottomWall) {
+                this.newDirectionPicker(head, this.direction);
+            }
+            else if (this.direction == 'left' && leftWall) {
+                this.newDirectionPicker(head, this.direction);
+            }
+        }
+        // }
+    };
+    SimpleGame.prototype.findApple = function (head) {
+        var headTop = head.y > this.apple.y;
+        var headRight = head.x < this.apple.x;
+        var headBottom = head.y < this.apple.y;
+        var headLeft = head.x > this.apple.x;
+        if (headTop && this.direction != 'down') {
+            this.direction = 'up';
+        }
+        else if (headRight && this.direction != 'left') {
+            this.direction = 'right';
+        }
+        else if (headBottom && this.direction != 'up') {
+            this.direction = 'down';
+        }
+        else if (headLeft && this.direction != 'right') {
+            this.direction = 'left';
+        }
+    };
+    SimpleGame.prototype.newDirectionPicker = function (head, direction) {
+        var directionRandomizer = Math.round(Math.random());
+        var topWall = head.y <= 0;
+        var rightWall = head.x >= finalGameWidth - this.squareSize;
+        var bottomWall = head.y >= finalGameHeight - this.squareSize;
+        var leftWall = head.x <= 0;
+        if (direction == 'left') {
+            if (directionRandomizer) {
+                if (topWall) {
+                    this.direction = 'down';
+                }
+                else {
+                    this.direction = 'up';
+                }
+            }
+            else {
+                if (bottomWall) {
+                    this.direction = 'up';
+                }
+                else {
+                    this.direction = 'down';
+                }
+            }
+        }
+        else if (direction == 'right') {
+            if (directionRandomizer) {
+                if (bottomWall) {
+                    this.direction = 'up';
+                }
+                else {
+                    this.direction = 'down';
+                }
+            }
+            else {
+                if (topWall) {
+                    this.direction = 'down';
+                }
+                else {
+                    this.direction = 'up';
+                }
+            }
+        }
+        else if (direction == 'down') {
+            if (directionRandomizer) {
+                if (leftWall) {
+                    this.direction = 'right';
+                }
+                else {
+                    this.direction = 'left';
+                }
+            }
+            else {
+                if (rightWall) {
+                    this.direction = 'left';
+                }
+                else {
+                    this.direction = 'right';
+                }
+            }
+        }
+        else if (direction == 'up') {
+            if (directionRandomizer) {
+                if (rightWall) {
+                    this.direction = 'left';
+                }
+                else {
+                    this.direction = 'right';
+                }
+            }
+            else {
+                if (leftWall) {
+                    this.direction = 'right';
+                }
+                else {
+                    this.direction = 'left';
+                }
             }
         }
     };
+    ;
     SimpleGame.prototype.gameOver = function () {
         this.cursors.up.enabled = false;
         this.cursors.down.enabled = false;

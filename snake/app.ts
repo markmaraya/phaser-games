@@ -5,10 +5,10 @@ const gameHeight: number = 47;
 const finalGameWidth: number = gameWidth * 16;
 const finalGameHeight: number = gameHeight * 16;
 const gameBackground: number = 0;
-const snakeLength: number = 42;
+const snakeLength: number = 2;
 const snakeColor: number = 6;
 const appleColor: number = 3;
-let gameSpeed: number = 5;
+let gameSpeed: number = 10;
 
 class SimpleGame {
     constructor() {
@@ -21,7 +21,9 @@ class SimpleGame {
             selfCollision: this.selfCollision,
             wallCollision: this.wallCollision,
             gameOver: this.gameOver,
-            newGame: this.newGame
+            newGame: this.newGame,
+            newDirectionPicker: this.newDirectionPicker,
+            findApple: this.findApple
         });
     }
 
@@ -43,6 +45,11 @@ class SimpleGame {
     keyboard: any;
     enter: any;
     isAlive: boolean;
+    xTextValue: any;
+    yTextValue: any;
+    xAppleTextValue: any;
+    yAppleTextValue: any;
+    directionTextValue: any;
 
     preload() {
         this.game.load.spritesheet('sprite', 'assets/sprite.png', 24, 24);
@@ -86,12 +93,25 @@ class SimpleGame {
 
         this.generateApple();
 
-        const style = { font: 'bold 14px sans-serif', fill: '#fff' };
+        const STYLE = { font: 'bold 14px sans-serif', fill: '#fff' };
+        const SNAKE_HEAD = this.snake[this.snake.length - 1];
+        const APPLE = this.apple;
 
-        this.game.add.text(30, 20, 'SCORE', style);
-        this.scoreTextValue = this.game.add.text(90, 20, this.score.toString(), style);
-        this.game.add.text(350, 20, 'SPEED', style);
-        this.speedTextValue = this.game.add.text(410, 20, this.speed.toString(), style);
+        this.game.add.text(30, 20, 'SCORE', STYLE);
+        this.scoreTextValue = this.game.add.text(130, 20, this.score.toString(), STYLE);
+        this.game.add.text(30, 40, 'SPEED', STYLE);
+        this.speedTextValue = this.game.add.text(130, 40, this.speed.toString(), STYLE);
+        this.game.add.text(30, 60, 'DIRECTION', STYLE)
+        this.directionTextValue = this.game.add.text(130, 60, this.direction.toUpperCase().toString(), STYLE);
+        this.game.add.text(30, 80, 'X - GREEN', STYLE);
+        this.xTextValue = this.game.add.text(130, 80, SNAKE_HEAD.x.toString(), STYLE);
+        this.game.add.text(30, 100, 'Y - GREEN', STYLE);
+        this.yTextValue = this.game.add.text(130, 100, SNAKE_HEAD.y.toString(), STYLE);
+        this.game.add.text(30, 120, 'X - RED', STYLE);
+        this.xAppleTextValue = this.game.add.text(130, 120, APPLE.x.toString(), STYLE);
+        this.game.add.text(30, 140, 'Y - RED', STYLE);
+        this.yAppleTextValue = this.game.add.text(130, 140, APPLE.y.toString(), STYLE);
+
     }
 
     update() {
@@ -110,7 +130,7 @@ class SimpleGame {
 
         this.updateDelay++;
 
-        if (this.updateDelay % (7 - this.speed) == 0) {
+        if (this.updateDelay % (11 - this.speed) == 0) {
             let firstCell = this.snake[this.snake.length - 1];
             let lastCell = this.snake.shift();
 
@@ -149,8 +169,15 @@ class SimpleGame {
             }
 
             this.appleCollision();
+            this.findApple(firstCell);
             this.selfCollision(firstCell);
             this.wallCollision(firstCell);
+
+            this.xTextValue.text = firstCell.x.toString();
+            this.yTextValue.text = firstCell.y.toString();
+            this.xAppleTextValue.text = this.apple.x.toString();
+            this.yAppleTextValue.text = this.apple.y.toString();
+            this.directionTextValue.text = this.direction.toUpperCase().toString();
         }
     }
 
@@ -178,19 +205,114 @@ class SimpleGame {
     selfCollision(head) {
         for (let i = 0; i < this.snake.length - 1; i++) {
             if (head.x == this.snake[i].x && head.y == this.snake[i].y) {
-                this.gameOver();
+                // this.gameOver();
             }
         }
     }
 
     wallCollision(head) {
-        if (this.isAlive) {
-            if (head.x >= finalGameWidth || head.x < 0 || head.y >= finalGameHeight || head.y < 0) {
-                this.isAlive = false;
-                this.gameOver();
+        let topWall: boolean = head.y <= 0;
+        let rightWall: boolean = head.x >= finalGameWidth - this.squareSize;
+        let bottomWall: boolean = head.y >= finalGameHeight - this.squareSize;
+        let leftWall: boolean = head.x <= 0;
+        // if (this.isAlive) {
+        if (topWall || rightWall || bottomWall || leftWall) {
+            if (this.direction == 'up' && topWall) {
+                this.newDirectionPicker(head, this.direction);
+            } else if (this.direction == 'right' && rightWall) {
+                this.newDirectionPicker(head, this.direction);
+            } else if (this.direction == 'down' && bottomWall) {
+                this.newDirectionPicker(head, this.direction);
+            } else if (this.direction == 'left' && leftWall) {
+                this.newDirectionPicker(head, this.direction);
             }
+            // this.isAlive = false;
+            // this.gameOver();
+        }
+        // }
+    }
+
+    findApple(head) {
+        let headTop: boolean = head.y > this.apple.y;
+        let headRight: boolean = head.x < this.apple.x;
+        let headBottom: boolean = head.y < this.apple.y;
+        let headLeft: boolean = head.x > this.apple.x;
+        if (headTop && this.direction != 'down') {
+            this.direction = 'up';
+        } else if (headRight && this.direction != 'left') {
+            this.direction = 'right';
+        } else if (headBottom && this.direction != 'up') {
+            this.direction = 'down';
+        } else if (headLeft && this.direction != 'right') {
+            this.direction = 'left';
         }
     }
+
+    newDirectionPicker(head, direction) {
+        let directionRandomizer: number = Math.round(Math.random());
+        let topWall: boolean = head.y <= 0;
+        let rightWall: boolean = head.x >= finalGameWidth - this.squareSize;
+        let bottomWall: boolean = head.y >= finalGameHeight - this.squareSize;
+        let leftWall: boolean = head.x <= 0;
+
+        if (direction == 'left') {
+            if (directionRandomizer) {
+                if (topWall) {
+                    this.direction = 'down';
+                } else {
+                    this.direction = 'up';
+                }
+            } else {
+                if (bottomWall) {
+                    this.direction = 'up';
+                } else {
+                    this.direction = 'down';
+                }
+            }
+        } else if (direction == 'right') {
+            if (directionRandomizer) {
+                if (bottomWall) {
+                    this.direction = 'up';
+                } else {
+                    this.direction = 'down';
+                }
+            } else {
+                if (topWall) {
+                    this.direction = 'down';
+                } else {
+                    this.direction = 'up';
+                }
+            }
+        } else if (direction == 'down') {
+            if (directionRandomizer) {
+                if (leftWall) {
+                    this.direction = 'right';
+                } else {
+                    this.direction = 'left';
+                }
+            } else {
+                if (rightWall) {
+                    this.direction = 'left';
+                } else {
+                    this.direction = 'right';
+                }
+            }
+        } else if (direction == 'up') {
+            if (directionRandomizer) {
+                if (rightWall) {
+                    this.direction = 'left';
+                } else {
+                    this.direction = 'right';
+                }
+            } else {
+                if (leftWall) {
+                    this.direction = 'right';
+                } else {
+                    this.direction = 'left';
+                }
+            }
+        }
+    };
 
     gameOver() {
         this.cursors.up.enabled = false;
